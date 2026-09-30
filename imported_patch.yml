@@ -5,27 +5,79 @@ Version: 1.2
 # Game update: 01.01
 # Verified PPU hash: PPU-645f0573d7438e37ddd231377adf9c1205e8a040
 #
-# This file currently contains only patches that have been verified in actual gameplay.
-# Experimental health patches were removed from the stable file until the real HP storage
-# and pointer chain are identified reliably.
+# Stable / gameplay-verified:
+#   - Unlimited Magic Use
+#   - Infinite Mid-Air Jumps
+#
+# Runtime mapping for Infinite Health is now strongly verified from two RPCS3 guest-memory
+# snapshots (low HP -> green chest -> full HP). The exact patch below is NEW and should be
+# treated as experimental until one final in-game damage test confirms the hook cadence.
+# See README.md for the full reverse-engineering notes and provenance.
 
 PPU-645f0573d7438e37ddd231377adf9c1205e8a040:
+  "Infinite Health (experimental)":
+    Games:
+      "God Of War: HD (Custom QoL)":
+        BCUS98229: [ 01.01 ]
+    Author: "CodeFreak/PS3UserCheat layout; BCUS98229 01.01 runtime port by Cedar17"
+    Notes: "Runtime mapping verified: [0x0054DA9C] is the player-object pointer; player+0x184 is current HP and player+0x188 is max HP. The hook copies max HP into current HP. Patch itself awaits final gameplay verification."
+    Patch Version: 1.0
+    Patch:
+      # Hook a known hot player-related path. Original instruction at 0x16B708:
+      #   lwz r0,0xD10(r31)
+      # Branch absolute to the code cave at 0x004789D4.
+      - [ be32, 0x0016B708, 0x484789D6 ]
+
+      # Code cave @ 0x004789D4
+      #
+      # Runtime chain verified on BCUS98229 01.01:
+      #   [0x0054DA9C] -> player object
+      #   player + 0x184 -> current HP
+      #   player + 0x188 -> max HP
+      #
+      # Example captured in RPCS3 guest-memory dumps:
+      #   [0x0054DA9C] = 0x30A3DAD0
+      #   0x30A3DAD0 + 0x184 = 0x30A3DC54: 40.5 -> 200.0 after green chest
+      #   0x30A3DAD0 + 0x188 = 0x30A3DC58: 200.0 -> 200.0
+      #
+      # Rather than hard-coding 200.0, copy max HP into current HP so the patch naturally
+      # follows health upgrades. r11/r12, CR and the stack are preserved. Null/zero guards
+      # reduce the chance of touching an uninitialized player object during transitions.
+      - [ be32, 0x004789D4, 0xF821FFD1 ] # stdu  r1,-0x30(r1)
+      - [ be32, 0x004789D8, 0xF9610010 ] # std   r11,0x10(r1)
+      - [ be32, 0x004789DC, 0xF9810018 ] # std   r12,0x18(r1)
+      - [ be32, 0x004789E0, 0x7C000026 ] # mfcr  r0
+      - [ be32, 0x004789E4, 0x3D600055 ] # lis   r11,0x55
+      - [ be32, 0x004789E8, 0x816BDA9C ] # lwz   r11,-0x2564(r11) = [0x0054DA9C]
+      - [ be32, 0x004789EC, 0x2C0B0000 ] # cmpwi r11,0
+      - [ be32, 0x004789F0, 0x41820014 ] # beq   restore
+      - [ be32, 0x004789F4, 0x818B0188 ] # lwz   r12,0x188(r11)  ; max HP bits
+      - [ be32, 0x004789F8, 0x2C0C0000 ] # cmpwi r12,0
+      - [ be32, 0x004789FC, 0x41820008 ] # beq   restore
+      - [ be32, 0x00478A00, 0x918B0184 ] # stw   r12,0x184(r11)  ; current HP = max HP
+      - [ be32, 0x00478A04, 0x7C0FF120 ] # mtcrf 0xff,r0
+      - [ be32, 0x00478A08, 0xE9610010 ] # ld    r11,0x10(r1)
+      - [ be32, 0x00478A0C, 0xE9810018 ] # ld    r12,0x18(r1)
+      - [ be32, 0x00478A10, 0x38210030 ] # addi  r1,r1,0x30
+      - [ be32, 0x00478A14, 0x801F0D10 ] # lwz   r0,0xD10(r31)  ; replay original
+      - [ be32, 0x00478A18, 0x4816B70E ] # ba    0x0016B70C
+
   "Unlimited Magic Use":
     Games:
       "God Of War: HD (Custom QoL)":
         BCUS98229: [ 01.01 ]
     Author: "Wulf2k; RPCS3 verification by Cedar17"
-    Notes: "Verified working. The blue magic meter still drains normally and may reach zero, but Kratos can continue casting magic indefinitely. This patch removes the 'insufficient magic' restriction; it does NOT freeze or refill the visible blue meter."
+    Notes: "Verified working. The blue magic meter still drains normally and may reach zero, but Kratos can continue casting magic indefinitely. This bypasses the 'insufficient magic' check; it does NOT freeze/refill the visible blue meter."
     Patch Version: 1.0
     Patch:
-      # Wulf2k AoB:
+      # Original Wulf2k AoB from the ArtemisPS3 database:
       #   7D6307B4 4E800020 89280411
       # ->38600001 4E800020 89280411
       #
-      # 0x38600001 = li r3, 1
-      # The following instruction is blr, so this tiny function immediately returns true.
-      # In practice this bypasses the magic-availability check rather than changing the
-      # numeric value displayed by the HUD.
+      # 0x38600001 = li r3,1
+      # The following instruction is blr, so this tiny function returns true immediately.
+      # Actual effect: magic availability is always accepted. The numeric magic resource and
+      # HUD still decrease normally; zero blue bar does not prevent casting.
       - [ be32, 0x00071E60, 0x38600001 ]
 
   "Infinite Mid-Air Jumps":
@@ -33,14 +85,14 @@ PPU-645f0573d7438e37ddd231377adf9c1205e8a040:
       "God Of War: HD (Custom QoL)":
         BCUS98229: [ 01.01 ]
     Author: "Wulf2k; RPCS3 verification by Cedar17"
-    Notes: "Verified working. After the normal first and second jump, X can be pressed repeatedly in mid-air for additional jumps. Useful for traversal and bypassing timing/platform hazards. Large sequence breaks may skip camera or gameplay trigger volumes."
+    Notes: "Verified working. After the normal first/second jump, X can be pressed repeatedly in mid-air for additional jumps. Useful for traversal and bypassing timing/platform hazards. Large sequence breaks may skip camera/gameplay trigger volumes."
     Patch Version: 1.0
     Patch:
-      # Wulf2k AoB:
+      # Original Wulf2k AoB from the ArtemisPS3 database:
       #   60000018 540902D6
       # ->60000000 540902D6
       #
-      # 0x60000000 is the canonical PowerPC NOP (ori r0,r0,0).
-      # Replacing this instruction removes the limiter used by this jump path while leaving
-      # the adjacent instruction untouched.
+      # 0x60000000 is the canonical PowerPC NOP (ori r0,r0,0). Replacing the first
+      # instruction removes the limiter used by this jump path while leaving the adjacent
+      # instruction untouched.
       - [ be32, 0x00080B14, 0x60000000 ]
