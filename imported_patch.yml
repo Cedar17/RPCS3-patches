@@ -1,47 +1,46 @@
 Version: 1.2
 
+# God of War HD (God of War Collection)
+# Serial: BCUS98229
+# Game update: 01.01
+# Verified PPU hash: PPU-645f0573d7438e37ddd231377adf9c1205e8a040
+#
+# This file currently contains only patches that have been verified in actual gameplay.
+# Experimental health patches were removed from the stable file until the real HP storage
+# and pointer chain are identified reliably.
+
 PPU-645f0573d7438e37ddd231377adf9c1205e8a040:
-  "Infinite Health (v4 - direct player HP)":
+  "Unlimited Magic Use":
     Games:
       "God Of War: HD (Custom QoL)":
         BCUS98229: [ 01.01 ]
-    Author: "CodeFreak pointer layout + custom RPCS3 hook"
-    Notes: "Uses Markin's known player-object hook at 0x16B708 and directly restores player+0x184/+0x188. No absolute heap address and no scratch RAM."
-    Patch Version: 4.0
+    Author: "Wulf2k; RPCS3 verification by Cedar17"
+    Notes: "Verified working. The blue magic meter still drains normally and may reach zero, but Kratos can continue casting magic indefinitely. This patch removes the 'insufficient magic' restriction; it does NOT freeze or refill the visible blue meter."
+    Patch Version: 1.0
     Patch:
-      # Replace original:
-      #   lwz r0,0xD10(r31)
-      # with an absolute branch to our cave.
-      - [ be32, 0x0016B708, 0x484789D6 ]
-
-      # r31 = player object
-      # 0x43490000 = full upgraded HP
-      - [ be32, 0x004789D4, 0x3C004349 ] # lis r0,0x4349
-      - [ be32, 0x004789D8, 0x901F0184 ] # stw r0,0x184(r31)
-      - [ be32, 0x004789DC, 0x901F0188 ] # stw r0,0x188(r31)
-
-      # Re-run the instruction we replaced.
-      - [ be32, 0x004789E0, 0x801F0D10 ] # lwz r0,0xD10(r31)
-
-      # Return to original code at 0x16B70C.
-      - [ be32, 0x004789E4, 0x4816B70E ]
-
-  "Unlimited Magic Use (v3 - Wulf2k AoB)":
-    Games:
-      "God Of War: HD (Custom QoL)":
-        BCUS98229: [ 01.01 ]
-    Author: "Wulf2k"
-    Notes: "Blue meter may decrease to zero, but magic remains usable indefinitely. This is expected."
-    Patch Version: 3.0
-    Patch:
+      # Wulf2k AoB:
+      #   7D6307B4 4E800020 89280411
+      # ->38600001 4E800020 89280411
+      #
+      # 0x38600001 = li r3, 1
+      # The following instruction is blr, so this tiny function immediately returns true.
+      # In practice this bypasses the magic-availability check rather than changing the
+      # numeric value displayed by the HUD.
       - [ be32, 0x00071E60, 0x38600001 ]
 
   "Infinite Mid-Air Jumps":
     Games:
       "God Of War: HD (Custom QoL)":
         BCUS98229: [ 01.01 ]
-    Author: "Wulf2k"
-    Notes: "Verified working on this BCUS98229 01.01 build."
+    Author: "Wulf2k; RPCS3 verification by Cedar17"
+    Notes: "Verified working. After the normal first and second jump, X can be pressed repeatedly in mid-air for additional jumps. Useful for traversal and bypassing timing/platform hazards. Large sequence breaks may skip camera or gameplay trigger volumes."
     Patch Version: 1.0
     Patch:
+      # Wulf2k AoB:
+      #   60000018 540902D6
+      # ->60000000 540902D6
+      #
+      # 0x60000000 is the canonical PowerPC NOP (ori r0,r0,0).
+      # Replacing this instruction removes the limiter used by this jump path while leaving
+      # the adjacent instruction untouched.
       - [ be32, 0x00080B14, 0x60000000 ]
