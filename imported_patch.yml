@@ -5,22 +5,24 @@ Version: 1.2
 # Game update: 01.01
 # Verified PPU hash: PPU-645f0573d7438e37ddd231377adf9c1205e8a040
 #
-# Stable / gameplay-verified:
+# Gameplay-verified on BCUS98229 01.01:
+#   - Infinite Health
 #   - Unlimited Magic Use
 #   - Infinite Mid-Air Jumps
 #
-# Runtime mapping for Infinite Health is now strongly verified from two RPCS3 guest-memory
-# snapshots (low HP -> green chest -> full HP). The exact patch below is NEW and should be
-# treated as experimental until one final in-game damage test confirms the hook cadence.
-# See README.md for the full reverse-engineering notes and provenance.
+# IMPORTANT FINAL-BOSS NOTE:
+# The last Ares phase uses a shared/tug-of-war health mechanic between Kratos and Ares.
+# Infinite Health forces Kratos' current HP back to max and may interfere with that intended
+# mechanic. Disable Infinite Health before the final Ares phase for normal boss behavior.
+# See README.md for details, provenance, and reverse-engineering notes.
 
 PPU-645f0573d7438e37ddd231377adf9c1205e8a040:
-  "Infinite Health (experimental)":
+  "Infinite Health":
     Games:
       "God Of War: HD (Custom QoL)":
         BCUS98229: [ 01.01 ]
     Author: "CodeFreak/PS3UserCheat layout; BCUS98229 01.01 runtime port by Cedar17"
-    Notes: "Runtime mapping verified: [0x0054DA9C] is the player-object pointer; player+0x184 is current HP and player+0x188 is max HP. The hook copies max HP into current HP. Patch itself awaits final gameplay verification."
+    Notes: "Verified working: loading a low-HP save immediately restores full health and enemy hits do not reduce the green bar. Runtime chain: [0x0054DA9C] -> player; +0x184 current HP; +0x188 max HP. Final Ares phase warning: disable this patch because that fight uses a shared/tug-of-war health mechanic."
     Patch Version: 1.0
     Patch:
       # Hook a known hot player-related path. Original instruction at 0x16B708:
@@ -35,14 +37,14 @@ PPU-645f0573d7438e37ddd231377adf9c1205e8a040:
       #   player + 0x184 -> current HP
       #   player + 0x188 -> max HP
       #
-      # Example captured in RPCS3 guest-memory dumps:
+      # Captured example from RPCS3 guest-memory dumps:
       #   [0x0054DA9C] = 0x30A3DAD0
       #   0x30A3DAD0 + 0x184 = 0x30A3DC54: 40.5 -> 200.0 after green chest
       #   0x30A3DAD0 + 0x188 = 0x30A3DC58: 200.0 -> 200.0
       #
-      # Rather than hard-coding 200.0, copy max HP into current HP so the patch naturally
-      # follows health upgrades. r11/r12, CR and the stack are preserved. Null/zero guards
-      # reduce the chance of touching an uninitialized player object during transitions.
+      # We do NOT hard-code 200.0. Instead we copy max HP into current HP, so the patch
+      # naturally follows health upgrades. r11/r12, CR and the stack are preserved.
+      # Null/zero guards reduce the chance of touching an uninitialized player object.
       - [ be32, 0x004789D4, 0xF821FFD1 ] # stdu  r1,-0x30(r1)
       - [ be32, 0x004789D8, 0xF9610010 ] # std   r11,0x10(r1)
       - [ be32, 0x004789DC, 0xF9810018 ] # std   r12,0x18(r1)
@@ -85,7 +87,7 @@ PPU-645f0573d7438e37ddd231377adf9c1205e8a040:
       "God Of War: HD (Custom QoL)":
         BCUS98229: [ 01.01 ]
     Author: "Wulf2k; RPCS3 verification by Cedar17"
-    Notes: "Verified working. After the normal first/second jump, X can be pressed repeatedly in mid-air for additional jumps. Useful for traversal and bypassing timing/platform hazards. Large sequence breaks may skip camera/gameplay trigger volumes."
+    Notes: "Verified working. After the normal first/second jump, press X repeatedly in mid-air for additional jumps. Useful for traversal and bypassing timing/platform hazards. Aggressive sequence-breaking may skip camera/gameplay trigger volumes."
     Patch Version: 1.0
     Patch:
       # Original Wulf2k AoB from the ArtemisPS3 database:
