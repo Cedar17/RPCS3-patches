@@ -1,0 +1,47 @@
+Version: 1.2
+
+PPU-645f0573d7438e37ddd231377adf9c1205e8a040:
+  "Infinite Health (v4 - direct player HP)":
+    Games:
+      "God Of War: HD (Custom QoL)":
+        BCUS98229: [ 01.01 ]
+    Author: "CodeFreak pointer layout + custom RPCS3 hook"
+    Notes: "Uses Markin's known player-object hook at 0x16B708 and directly restores player+0x184/+0x188. No absolute heap address and no scratch RAM."
+    Patch Version: 4.0
+    Patch:
+      # Replace original:
+      #   lwz r0,0xD10(r31)
+      # with an absolute branch to our cave.
+      - [ be32, 0x0016B708, 0x484789D6 ]
+
+      # r31 = player object
+      # 0x43490000 = full upgraded HP
+      - [ be32, 0x004789D4, 0x3C004349 ] # lis r0,0x4349
+      - [ be32, 0x004789D8, 0x901F0184 ] # stw r0,0x184(r31)
+      - [ be32, 0x004789DC, 0x901F0188 ] # stw r0,0x188(r31)
+
+      # Re-run the instruction we replaced.
+      - [ be32, 0x004789E0, 0x801F0D10 ] # lwz r0,0xD10(r31)
+
+      # Return to original code at 0x16B70C.
+      - [ be32, 0x004789E4, 0x4816B70E ]
+
+  "Unlimited Magic Use (v3 - Wulf2k AoB)":
+    Games:
+      "God Of War: HD (Custom QoL)":
+        BCUS98229: [ 01.01 ]
+    Author: "Wulf2k"
+    Notes: "Blue meter may decrease to zero, but magic remains usable indefinitely. This is expected."
+    Patch Version: 3.0
+    Patch:
+      - [ be32, 0x00071E60, 0x38600001 ]
+
+  "Infinite Mid-Air Jumps":
+    Games:
+      "God Of War: HD (Custom QoL)":
+        BCUS98229: [ 01.01 ]
+    Author: "Wulf2k"
+    Notes: "Verified working on this BCUS98229 01.01 build."
+    Patch Version: 1.0
+    Patch:
+      - [ be32, 0x00080B14, 0x60000000 ]
