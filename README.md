@@ -10,11 +10,11 @@ Target PPU hash:
 PPU-645f0573d7438e37ddd231377adf9c1205e8a040
 ```
 
-Included patches:
+Gameplay-verified patches:
 
-- **Unlimited Magic Use** — gameplay verified.
-- **Infinite Mid-Air Jumps** — gameplay verified.
-- **Infinite Health (experimental)** — the runtime HP pointer chain is strongly verified from RPCS3 memory dumps; the final hook implementation still needs one last gameplay test.
+- **Infinite Health** — verified in live gameplay.
+- **Unlimited Magic Use** — verified in live gameplay.
+- **Infinite Mid-Air Jumps** — verified in live gameplay.
 
 The patch file is [`imported_patch.yml`](./imported_patch.yml).
 
@@ -23,6 +23,77 @@ The patch file is [`imported_patch.yml`](./imported_patch.yml).
 Download `imported_patch.yml` and place/merge it into RPCS3's patch directory. Then open RPCS3's **Manage Game Patches** for God of War Collection and enable the desired entries.
 
 When changing executable-code patches, clearing the game's PPU cache before retesting is useful so RPCS3 recompiles the affected code.
+
+## Infinite Health
+
+### Actual gameplay effect
+
+Verified behavior on BCUS98229 01.01:
+
+- Loading a save with low HP immediately restores the green bar to full.
+- Enemy hits do not visibly reduce the green bar.
+- The patch follows the game's current maximum HP rather than forcing a hard-coded constant.
+
+### Runtime structure
+
+The final pointer chain was reconstructed from RPCS3 guest-memory dumps:
+
+```text
+[0x0054DA9C]
+    -> player object
+    + 0x184 -> current HP
+    + 0x188 -> max HP
+```
+
+One captured runtime instance was:
+
+```text
+[0x0054DA9C] = 0x30A3DAD0
+
+BEFORE opening a green-health chest:
+0x30A3DC54 (+0x184) = 40.5
+0x30A3DC58 (+0x188) = 200.0
+
+AFTER opening the chest:
+0x30A3DC54 (+0x184) = 200.0
+0x30A3DC58 (+0x188) = 200.0
+```
+
+The player base in that session was therefore:
+
+```text
+0x30A3DC54 - 0x184 = 0x30A3DAD0
+```
+
+Searching the entire BEFORE guest-memory dump for the big-endian pointer value `0x30A3DAD0` produced exactly one hit:
+
+```text
+0x0054DA9C -> 0x30A3DAD0
+```
+
+This independently matches the old CodeFreak / PS3UserCheat structure, which also treated HP as player-relative fields at `+0x184` and `+0x188`.
+
+### Implementation
+
+The patch does not write `200.0` directly. Conceptually it does:
+
+```c
+player = *(u32*)0x0054DA9C;
+if (player && player->max_hp != 0)
+    player->current_hp = player->max_hp;
+```
+
+That makes it naturally follow health upgrades.
+
+The patch uses a small PowerPC code cave, preserves `r11`, `r12`, CR and the stack, replays the displaced original instruction, and returns to the original flow.
+
+### Final Ares battle warning
+
+The final Ares encounter has special health mechanics that differ from ordinary combat. In the last phase, Kratos and Ares use a shared / tug-of-war health bar rather than two completely independent ordinary HP pools. A patch that continuously forces Kratos' current HP back to maximum can therefore interfere with the intended boss mechanic.
+
+For normal final-boss behavior, **disable Infinite Health before the final Ares phase**. Unlimited Magic Use and Infinite Mid-Air Jumps do not modify the HP fields and can remain enabled if desired.
+
+The earlier warning that “Ares steals health” was imprecise wording. The important technical point is the special shared-health mechanic in the final phase, not a generic life-steal effect throughout the fight.
 
 ## Unlimited Magic Use
 
@@ -60,7 +131,7 @@ This AoB was also found at the expected location in the BCUS98229 01.01 executab
 
 ### Actual gameplay effect
 
-After the normal first/second jump, repeatedly pressing jump continues to produce additional mid-air jumps.
+After the normal first/second jump, repeatedly pressing **X** continues to produce additional mid-air jumps.
 
 This is useful for traversal and for bypassing some timing/platforming sections. It can also sequence-break the game, so very aggressive use may skip camera or gameplay trigger volumes.
 
@@ -159,7 +230,7 @@ AFTER
 0x30A3DC58 = 200.0
 ```
 
-This is a very strong match for:
+This strongly identifies:
 
 ```text
 player + 0x184 = current HP
@@ -174,42 +245,23 @@ Therefore the runtime player-object base in that session was:
 0x30A3DC54 - 0x184 = 0x30A3DAD0
 ```
 
-Searching the entire BEFORE memory dump for the big-endian pointer value `0x30A3DAD0` produced exactly one hit:
+Searching the entire BEFORE memory dump for the pointer value `0x30A3DAD0` produced exactly one hit:
 
 ```text
 0x0054DA9C -> 0x30A3DAD0
 ```
 
-So for the tested BCUS98229 01.01 build, the reconstructed chain is:
+That reconstructed the stable pointer root for the tested BCUS98229 01.01 executable.
 
-```text
-[0x0054DA9C]
-    -> player object
-    + 0x184 -> current HP
-    + 0x188 -> max HP
-```
+### Final live verification
 
-That is the key result of the investigation.
+After implementing the runtime-derived pointer chain in the RPCS3 patch:
 
-### Current experimental implementation
+- A save that normally loaded at half/low health loaded with a full green bar.
+- Enemy attacks no longer reduced the green bar.
+- No VM access violation occurred.
 
-The current `Infinite Health (experimental)` patch does not hard-code `200.0`.
-
-Instead it periodically performs the conceptual operation:
-
-```c
-player = *(u32*)0x0054DA9C;
-if (player)
-    player->current_hp = player->max_hp;
-```
-
-In PowerPC terms it loads the dynamic player pointer, reads `+0x188`, and writes those same 32 bits to `+0x184`.
-
-This is preferable to writing a fixed constant because it should naturally follow HP upgrades.
-
-The patch preserves `r11`, `r12`, CR and the stack, then replays the original instruction displaced by the hook. It also checks for a null player pointer and a zero max-HP value before writing.
-
-The **pointer chain itself is verified from runtime data**. The final code-hook cadence still needs one gameplay damage test before this entry should be promoted from experimental to stable.
+At that point the patch was promoted from experimental to stable.
 
 ## Historical / upstream references
 
@@ -251,14 +303,13 @@ The emulator's Debugger, Memory Viewer and Guest Memory Dump features were essen
 
 ## Testing notes
 
-Test environment during development included RPCS3 0.0.42 master builds on Windows 11 with BCUS98229 update 01.01.
+Development/testing used RPCS3 0.0.42 master builds on Windows 11 with BCUS98229 update 01.01.
 
-Known verified behavior:
+Verified behavior:
 
-- Infinite Mid-Air Jumps: works in actual gameplay.
-- Unlimited Magic Use: works; blue meter may visibly reach zero and casting still works.
-- Infinite Health pointer mapping: verified by two guest-memory snapshots.
-- Infinite Health final hook: pending one last live damage test.
+- Infinite Mid-Air Jumps: repeatedly pressing X in mid-air keeps jumping.
+- Unlimited Magic Use: blue meter drains normally, but casting still works at zero.
+- Infinite Health: low-HP saves are restored to full and enemy hits do not reduce the green bar.
 
 If an entry behaves differently on another dump/update/region, first verify the game's PPU hash. These addresses are not intended as universal offsets for every release of God of War Collection.
 
