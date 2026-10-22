@@ -3,7 +3,9 @@ Version: 1.2
 # God of War II HD / God of War Collection US, BCUS98229 01.01
 # PPU: PPU-9cd8d28963ebc29b59c79819cb56f3d92e857a37
 # Source: Markin_Mods, ported to RPCS3 by ChiDreams
-# Independent in-game testing by Cedar17: PENDING
+# In-game feedback (BCUS98229 01.01): Infinite Magic WORKS (blue gauge does not drain).
+# Infinite Mid-Air Jumps at 0x0008CDB4 does NOT work in reported RPCS3 test.
+# Retained solely for provenance/diagnosis; disable the ineffective jumps entry.
 # https://github.com/chidreams/Artemis-Patch-Collection-RPCS3
 # Import via drag and drop into RPCS3 Manage Game Patches.
 # Do NOT overwrite any existing imported_patch.yml.
@@ -14,7 +16,7 @@ PPU-9cd8d28963ebc29b59c79819cb56f3d92e857a37:
       "God Of War: II HD (Custom QoL)":
         BCUS98229: [ 01.01 ]
     Author: "Markin_Mods; RPCS3 port by ChiDreams; curated by Cedar17"
-    Notes: "Community port, not yet independently gameplay-verified here. Removes mid-air jump limiter; may skip triggers during traversal."
+    Notes: "User gameplay test on BCUS98229 v01.01: NO EFFECT. The original Markin_Mods / ChiDreams one-instruction NOP at 0x0008CDB4 is retained as an unverified historical candidate, NOT a working jump patch. Keep disabled until the jump-state logic is re-reversed."
     Patch Version: 1.0
     Patch:
       - [ be32, 0x0008CDB4, 0x60000000 ] # PPC NOP
@@ -24,7 +26,7 @@ PPU-9cd8d28963ebc29b59c79819cb56f3d92e857a37:
       "God Of War: II HD (Custom QoL)":
         BCUS98229: [ 01.01 ]
     Author: "Markin_Mods; RPCS3 port by ChiDreams; curated by Cedar17"
-    Notes: "Community port, not yet independently gameplay-verified here. Two code-cave hooks manipulate magic-related float fields. Exact HUD and zero-blue behavior pending live testing. Avoid overlapping magic patches."
+    Notes: "USER VERIFIED in RPCS3 on BCUS98229 01.01 (2026-10-22): blue meter never decreases while casting. Two code-cave hooks alter magic-related float state. Keep the 13 original PPC writes unchanged; avoid overlapping cheats."
     Patch Version: 1.0
     Patch:
       # Hook A: 0x00090A38 -> 0x004C1214
