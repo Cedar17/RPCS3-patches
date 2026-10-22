@@ -1,20 +1,20 @@
 Version: 1.2
 
-# God of War HD (God of War Collection)
-# Serial: BCUS98229
-# Game update: 01.01
-# Verified PPU hash: PPU-645f0573d7438e37ddd231377adf9c1205e8a040
+# Community-reviewed and personally gameplay-tested RPCS3 patches.
+# Game: God of War Collection, US disc/title ID BCUS98229, update 01.01.
+# The two included games have DIFFERENT executable PPU hashes.
 #
-# Gameplay-verified on BCUS98229 01.01:
-#   - Infinite Health
-#   - Unlimited Magic Use
-#   - Infinite Mid-Air Jumps
+# God of War HD:
+#   PPU-645f0573d7438e37ddd231377adf9c1205e8a040
+#   Infinite Health, Unlimited Magic Use, Infinite Mid-Air Jumps
 #
-# IMPORTANT FINAL-BOSS NOTE:
-# The last Ares phase uses a shared/tug-of-war health mechanic between Kratos and Ares.
-# Infinite Health forces Kratos' current HP back to max and may interfere with that intended
-# mechanic. Disable Infinite Health before the final Ares phase for normal boss behavior.
-# See README.md for details, provenance, and reverse-engineering notes.
+# God of War II HD:
+#   PPU-9cd8d28963ebc29b59c79819cb56f3d92e857a37
+#   Infinite Magic
+#
+# Import through RPCS3 Manage Game Patches. Enable only what you need.
+# Keep a backup of any existing local imported_patch.yml before replacing it.
+# Documentation and upstream research references: README.md and docs/
 
 PPU-645f0573d7438e37ddd231377adf9c1205e8a040:
   "Infinite Health":
@@ -98,3 +98,26 @@ PPU-645f0573d7438e37ddd231377adf9c1205e8a040:
       # instruction removes the limiter used by this jump path while leaving the adjacent
       # instruction untouched.
       - [ be32, 0x00080B14, 0x60000000 ]
+
+PPU-9cd8d28963ebc29b59c79819cb56f3d92e857a37:
+  "Infinite Magic":
+    Games:
+      "God Of War: II HD (Custom QoL)":
+        BCUS98229: [ 01.01 ]
+    Author: "Markin_Mods (original); ChiDreams (RPCS3 port); Cedar17 (register-safe revision and gameplay verification)"
+    Notes: "Verified on BCUS98229 app 01.01 in RPCS3. Casting does not decrease the blue magic meter. Final design uses only the necessary magic hook, preserves nonvolatile f30 and stack state, and replays the displaced original instruction. See docs/god-of-war-ii-hd.md for technical details and testing limitations."
+    Patch Version: 1.1
+    Patch:
+      # Hook: branch to the 0x004C1214 code cave.
+      # Original 0x00090A38: lhz r0,0(r9); replayed in cave.
+      - [ be32, 0x00090A38, 0x484307DC ] # branch to cave A at 0x4C1214
+      - [ be32, 0x004C1214, 0xF821FFA1 ] # stdu r1,-0x60(r1), align 16
+      - [ be32, 0x004C1218, 0xDBC10028 ] # stfd f30,0x28(r1)
+      - [ be32, 0x004C121C, 0xA0090000 ] # lhz r0,0(r9) displaced instruction
+      - [ be32, 0x004C1220, 0xF8010030 ] # std r0,0x30(r1)
+      - [ be32, 0x004C1224, 0xCBC10030 ] # lfd f30,0x30(r1)
+      - [ be32, 0x004C1228, 0xFFC0F69C ] # fcfid f30,f30
+      - [ be32, 0x004C122C, 0xD3DA0060 ] # stfs f30,0x60(r26), original magic effect
+      - [ be32, 0x004C1230, 0xCBC10028 ] # lfd f30,0x28(r1), restore
+      - [ be32, 0x004C1234, 0x38210060 ] # addi r1,r1,0x60, restore SP
+      - [ be32, 0x004C1238, 0x4BBCF804 ] # branch back to 0x00090A3C
