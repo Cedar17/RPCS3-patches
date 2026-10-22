@@ -40,6 +40,30 @@ Small, documented patches for **God of War Collection** (US serial **BCUS98229**
 
 **Different platform, useful conceptual lead (do NOT paste PS2 addresses into PS3):** The PS2 NTSC-U GoW II raw cheat `2022662C 00000000` is documented as *Infinite Double Jumps* in [2016 GameHacking forum discussions](https://forum.gamehacking.org/forum/video-game-hacking-and-development/retro-hacking/14624-god-of-war-two-codes-ps2) and on [Almar's Guides](https://almarsguides.com/Retro/Walkthroughs/Ps2/Games/GodofWarII/Codebreaker/). It is a MIPS/EE game and that is **not** a PPU patch offset. A [GoW III RPCS3 cheat author](https://github.com/Luckisugar/rpcs3-gow3-patches) likewise succeeds by stopping the used-double-jump flag from being stored. This supports investigating **jump-used state writes** rather than blindly NOPing unrelated instructions.
 
+**2026-10-22 owner RPCS3 debugger disassembly, jump cheat DISABLED:** The actual original instruction was captured in a live GoW II HD session, BCUS98229 01.01, RPCS3 0.0.42-20103:
+
+```asm
+0x0008CD78: lfs    f0,0x60(r8)
+0x0008CD7C: fsubs  f0,f0,f31
+0x0008CD80: lfs    f12,-0x69D0(r2)
+0x0008CD8C: lhz    r0,0(r9)
+0x0008CD90: extsh  r0,r0
+0x0008CDA0: fcfid  f11,f11
+0x0008CDA4: frsp   f13,f11
+0x0008CDA8: ble    cr7,0x8CDD8
+0x0008CDAC: fcmpu  cr7,f0,f13
+0x0008CDB0: bge    cr7,0x8CDD0
+0x0008CDB4: stfs   f0,0x60(r8)  # original 0xD0080060
+0x0008CDD0: fmr    f0,f13
+0x0008CDD4: b      0x8CDB4
+0x0008CDD8: fmr    f0,f12
+0x0008CDDC: b      0x8CDB4
+```
+
+The site is a **bounded floating-point update**: compute `f0 = [r8 + 0x60] - f31`, clamp between `f12` and a signed-16-bit-table-derived `f13`, then store `f0` back to `[r8 + 0x60]`. This looks like a clamped meter/resource or parameter update, **not an obvious "used double jump" flag**. The Artemis `nop` removes the store, which is logically insufficient evidence of an infinite X-jump mechanism. **Do not assume** the exact resource identity from the offset alone; `r26+0x60` in the working magic cave is suggestive, not proof both registers point at the same object. This direct in-game disassembly replaces previous uncertainty about the original opcode. It does not yet show whether the execution path is reached in a given action.
+
+**Next diagnostic:** Keep the broken jump entry disabled, add a temporary execution breakpoint at `0x0008CDB4`, resume a safe gameplay scene and record whether/when the breakpoint fires during idle, jumping, and magic use, including `r8`, `f0`, `f12`, `f13`, and `f31` if stopped there. Remove the breakpoint before ending/restarting emulation (some RPCS3 builds have had stop-with-breakpoint regressions). Even if this site is actively executed, that alone does not prove it gates double-jump input; finding and patching the correct airborne-jump-used state writer is the goal. No speculative byte changes have been committed.
+
 **Minimal evidence needed from user's executable:**
 1. Uncheck only GoW II **Infinite Mid-Air Jumps** in RPCS3 Patch Manager, click Save, completely restart the game, keep verified Infinite Magic enabled.
 2. While GoW II is running, open RPCS3 **Debugger**, select a PPU thread and use **Go to address** `0x0008CDA0`. Take a screenshot or copy disassembly covering `0x0008CD80` through `0x0008CE00`, especially the original word at `0x0008CDB4`. This distinguishes wrong-site/harmless NOP from a plausible but insufficient hook.
