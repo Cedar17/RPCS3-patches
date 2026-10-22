@@ -2,15 +2,15 @@
 
 Small, documented patches for **God of War Collection** (US serial **BCUS98229**, update **01.01**). God of War I HD and II HD are separate executables with different PPU hashes even on the same disc.
 
-## God of War II HD — infinite jumps and magic (community patch; gameplay testing pending)
+## God of War II HD — Infinite Magic confirmed; Infinite Jumps investigation
 
 **Download:** [`God_of_War_II_HD_BCUS98229_01.01_patch.yml`](./God_of_War_II_HD_BCUS98229_01.01_patch.yml) | [Raw file](https://raw.githubusercontent.com/Cedar17/RPCS3-patches/master/God_of_War_II_HD_BCUS98229_01.01_patch.yml)
 
 - Game: **God of War II HD**, BCUS98229, app version **01.01**.
 - Target executable hash: `PPU-9cd8d28963ebc29b59c79819cb56f3d92e857a37`.
-- **Infinite Mid-Air Jumps:** one PPC NOP at `0x0008CDB4`.
-- **Infinite Magic:** two hooks at `0x00090A38` / `0x00090C74`, with code caves at `0x004C1214` / `0x004C1230`.
-- **Status:** ported from existing community patches; branch destinations and writes statically checked; **not yet personally tested in game by Cedar17**. The blue HUD behavior (full/frozen/depleting) needs live verification.
+- **Infinite Mid-Air Jumps (NOT WORKING):** the old Markin_Mods/ChiDreams PPC NOP at `0x0008CDB4` has **no visible effect** in the owner\'s BCUS98229 01.01 RPCS3 gameplay test. It is preserved in YAML for provenance but should be **left disabled**.
+- **Infinite Magic (WORKING):** two hooks at `0x00090A38` / `0x00090C74`, with code caves at `0x004C1214` / `0x004C1230`. **User-tested 2026-10-22** on BCUS98229 01.01: repeated spells do not reduce the blue HUD bar. Unlike GoW I\'s unlimited-casting patch, which allows the meter to drain to zero, this GoW II patch leaves the meter full.
+- **Status:** GoW II Infinite Magic **verified working by the user** on 2026-10-22, while Infinite Mid-Air Jumps **failed the same game test**. The magic instruction writes are left unchanged. Do not advertise the one-NOP jump entry as verified.
 - **Scope:** these two cheats only. No GoW II health, rage, orbs, unlock-all changes.
 
 ### Install without replacing existing patches (Windows RPCS3)
@@ -18,11 +18,11 @@ Small, documented patches for **God of War Collection** (US serial **BCUS98229**
 1. Download the **Raw file** and save it as `God_of_War_II_HD_BCUS98229_01.01_patch.yml`. Keep the filename ending in `patch.yml`.
 2. In RPCS3, right-click **God of War Collection** → **Manage Game Patches**, or open **Manage → Game Patches**.
 3. **Drag the downloaded YAML onto the Patch Manager window**, then select **Import** in the dialog (not merely Validate). The Import action is not necessarily a visible toolbar button.
-4. Expand **God Of War: II HD (Custom QoL)** → **BCUS98229** → **01.01**. Tick **Infinite Mid-Air Jumps** and **Infinite Magic** and click **Save**.
-5. Fully stop and restart the game. Test jump repeatedly with X in mid-air and spend magic through the expected empty-blue point; watch HUD and test a checkpoint reload.
+4. Expand **God Of War: II HD (Custom QoL)** → **BCUS98229** → **01.01**. Tick **Infinite Magic** and click **Save**. Leave **Infinite Mid-Air Jumps** **unchecked**, because user testing found no effect.
+5. Fully stop and restart the game. Check that repeated spells do not decrease the blue meter; test a checkpoint reload. The jumping candidate does not presently work and needs a separate reverse-engineering cycle.
 6. If the patch does not show, boot GoW II and inspect `RPCS3.log` for `PPU executable hash`. It must match `PPU-9cd8d28963ebc29b59c79819cb56f3d92e857a37`. Do not force another hash into this file.
 
-**Important:** Do not replace your RPCS3 `patches/imported_patch.yml` if it has your GoW I patches or other custom patches. The drag-and-drop **Import** procedure adds entries to the managed custom patch file. Do not enable competing patches that write the same GoW II code cave. If the game becomes unstable, turn off both entries and re-enable each separately. Infinite jumping can bypass trigger volumes; keep a normal save. If the executable patch is not picked up after changes, consider clearing the game's PPU cache.
+**Important:** Do not replace your RPCS3 `patches/imported_patch.yml` if it has your GoW I patches or other custom patches. The drag-and-drop **Import** procedure adds entries to the managed custom patch file. Do not enable competing patches that write the same GoW II code cave. If the game becomes unstable, disable the suspect entry and restart. Even a future *working* infinite jump can bypass trigger volumes; keep a normal save. If the executable patch is not picked up after changes, consider clearing the game's PPU cache.
 
 ### Sources and provenance
 
@@ -31,6 +31,25 @@ Small, documented patches for **God of War Collection** (US serial **BCUS98229**
 - [Ali-mk original PS3-era demo, July 2021](https://www.youtube.com/watch?v=EN6j6DhRb5U): describes GoW II HD Infinite Magic and Infinite Jumps for BCUS98229.
 - [bucanero ArtemisPS3, GoW II European BCES00791 cheats](https://github.com/bucanero/ArtemisPS3/blob/master/docs/codes/God%20Of%20War%202%20BCES00791%20v01.00%20av01.01.ncl): alternative magic NOP sites `0x0008D000`, `0x0008D030`, `0x0008D038` belong to the **European** build, so they have **not** been reused for BCUS98229.
 - [RPCS3 Game Patches documentation](https://wiki.rpcs3.net/index.php?title=Help:Game_Patches): YAML versioning and import methodology.
+
+## Infinite jump investigation (2026-10-22)
+
+**Observed failure:** On BCUS98229, app version 01.01, the user imported both GoW II entries successfully. The two-hook magic patch worked: casting magic did not decrease the blue HUD bar. The one-word infinite-jump patch, at `0x0008CDB4 -> 0x60000000`, produced no observable additional jumps. Since both entries matched the GoW II executable and magic was effective, "YAML not imported" is unlikely to explain the jump failure. The jump write's runtime execution and exact original instruction have **not** been confirmed yet.
+
+**Source quality:** [Markin_Mods' original 2020 post](https://ps3hackingbyme.blogspot.com/2020/06/god-of-war-2-hd-unlock-all-cheats.html) advertises GoW II HD infinite jumps (BCUS98229 01.01) but does not publish the underlying original disassembly or test protocol. [ChiDreams' Artemis port](https://github.com/chidreams/Artemis-Patch-Collection-RPCS3) provides the single NOP; [PaauloSilva's mirror](https://github.com/PaauloSilva/Artemis-Patch-Collection-RPCS3_PKG) reproduces it, but copying is **not** independent working proof.
+
+**Different platform, useful conceptual lead (do NOT paste PS2 addresses into PS3):** The PS2 NTSC-U GoW II raw cheat `2022662C 00000000` is documented as *Infinite Double Jumps* in [2016 GameHacking forum discussions](https://forum.gamehacking.org/forum/video-game-hacking-and-development/retro-hacking/14624-god-of-war-two-codes-ps2) and on [Almar's Guides](https://almarsguides.com/Retro/Walkthroughs/Ps2/Games/GodofWarII/Codebreaker/). It is a MIPS/EE game and that is **not** a PPU patch offset. A [GoW III RPCS3 cheat author](https://github.com/Luckisugar/rpcs3-gow3-patches) likewise succeeds by stopping the used-double-jump flag from being stored. This supports investigating **jump-used state writes** rather than blindly NOPing unrelated instructions.
+
+**Minimal evidence needed from user's executable:**
+1. Uncheck only GoW II **Infinite Mid-Air Jumps** in RPCS3 Patch Manager, click Save, completely restart the game, keep verified Infinite Magic enabled.
+2. While GoW II is running, open RPCS3 **Debugger**, select a PPU thread and use **Go to address** `0x0008CDA0`. Take a screenshot or copy disassembly covering `0x0008CD80` through `0x0008CE00`, especially the original word at `0x0008CDB4`. This distinguishes wrong-site/harmless NOP from a plausible but insufficient hook.
+3. Optionally inspect the same area with the old jump patch on: `0x0008CDB4` should display `nop` / `60000000` if patched. Do not infer actual runtime execution merely from seeing a patched instruction.
+4. Capture one on-ground / airborne / after-double-jump sequence of game-state values with RPCS3's guest-memory dumps. Search candidate changing flags (0→1 after second jump, reset on landing) and the **code writing them**. Compare with unpatched values, then test one hypothesis at a time using separately named experimental patch entries.
+5. Do not transplant the PS2 `0x0022662C` or the first GoW HD `0x00080B14` offsets. They belong to different executables/CPU ISAs.
+
+**Alternative without a binary cheat:** The speedrunning [GoW II Glitch FAQ](https://gamefaqs.gamespot.com/ps2/932295-god-of-war-ii/faqs/54994) describes Barbarian Hammer Infinite Jump and other timing-based game glitches, but these are **not** substitutes for a repeat-X jump patch.
+
+**Current recommendation:** Use the verified Infinite Magic entry only. The jump patch remains recorded for archaeology; mark it failed rather than replacing it with guessed opcodes.
 
 ## God of War HD (first game) — gameplay-verified
 
