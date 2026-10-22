@@ -1,0 +1,54 @@
+Version: 1.2
+
+# EXPERIMENTAL A/B ISOLATION FOR GOD OF WAR II HD, BCUS98229 01.01
+# PPU-9cd8d28963ebc29b59c79819cb56f3d92e857a37
+#
+# Motivation: The full two-hook Infinite Magic patch works (blue bar does
+# not drain), but it visibly distorts the *full* yellow Amulet of the Fates
+# gauge length. This file isolates each hook to identify the cause.
+#
+# IMPORTANT: Disable the original "Infinite Magic" BEFORE testing.
+# Enable EXACTLY ONE test (A or B), never both together.
+# Fully stop and relaunch GoW II after each checkbox change.
+# Compare identical loaded-save conditions with full yellow gauge.
+# Original complete Magic patch is left unchanged in its separate file.
+#
+# TEST A: only hook at 0x00090A38; writes floating-point state [r26+0x60].
+# TEST B: only hook at 0x00090C74; writes floating-point state [r26+0x68].
+# Do NOT assume either offset corresponds to a particular HUD meter
+# until actual in-game A/B observations establish causality.
+#
+# Source: original 13 instruction writes from Markin_Mods / ChiDreams
+# curated by Cedar17 (Cedar17/RPCS3-patches).
+# Status: EXPERIMENTAL; each isolated variant is UNTESTED.
+
+PPU-9cd8d28963ebc29b59c79819cb56f3d92e857a37:
+  "TEST A - Magic Hook A only":
+    Games:
+      "God Of War: II HD (Magic A-B Test)":
+        BCUS98229: [ 01.01 ]
+    Author: "Markin_Mods / ChiDreams; experimental isolation by Cedar17"
+    Notes: "EXPERIMENTAL, untested. Contains ONLY 0x00090A38 branch and cave at 0x004C1214. Disable full Infinite Magic and TEST B. Compare blue magic behavior and yellow Amulet HUD length after restarting."
+    Patch Version: 0.1
+    Patch:
+      - [ be32, 0x00090A38, 0x484307DC ] # branch to cave A
+      - [ be32, 0x004C1214, 0xA0090000 ] # lhz  r0,0(r9)
+      - [ be32, 0x004C1218, 0xF801FFE0 ] # std  r0,-0x20(r1)
+      - [ be32, 0x004C121C, 0xCBC1FFE0 ] # lfd  f30,-0x20(r1)
+      - [ be32, 0x004C1220, 0xFFC0F69C ] # fcfid f30,f30
+      - [ be32, 0x004C1224, 0xD3DA0060 ] # stfs f30,0x60(r26)
+      - [ be32, 0x004C1228, 0x4BBCF814 ] # return to 0x00090A3C
+
+  "TEST B - Magic Hook B only":
+    Games:
+      "God Of War: II HD (Magic A-B Test)":
+        BCUS98229: [ 01.01 ]
+    Author: "Markin_Mods / ChiDreams; experimental isolation by Cedar17"
+    Notes: "EXPERIMENTAL, untested. Contains ONLY 0x00090C74 branch and cave at 0x004C1230. Disable full Infinite Magic and TEST A. Compare blue magic behavior and yellow Amulet HUD length after restarting."
+    Patch Version: 0.1
+    Patch:
+      - [ be32, 0x00090C74, 0x484305BC ] # branch to cave B
+      - [ be32, 0x004C1230, 0xC01A0068 ] # lfs  f0,0x68(r26)
+      - [ be32, 0x004C1234, 0xC0029658 ] # lfs  f0,-0x69A8(r2)
+      - [ be32, 0x004C1238, 0xD01A0068 ] # stfs f0,0x68(r26)
+      - [ be32, 0x004C123C, 0x4BBCFA3C ] # return to 0x00090C78
