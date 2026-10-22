@@ -75,6 +75,21 @@ The site is a **bounded floating-point update**: compute `f0 = [r8 + 0x60] - f31
 
 **Current recommendation:** Use the verified Infinite Magic entry only. The jump patch remains recorded for archaeology; mark it failed rather than replacing it with guessed opcodes.
 
+## GoW II Magic yellow-gauge UI regression: confirmed A/B result (2026-10-22)
+
+The player confirmed that **both screenshots show a completely charged Amulet of the Fates (yellow gauge)**. Full Infinite Magic visibly makes the yellow gauge longer than the vanilla full-meter rendering: **this is a HUD regression, not natural charging**.
+
+Isolated two-hook tests on the same BCUS98229 01.01 installation:
+- **A only** (hook at `0x00090A38`, cave `0x004C1214`, float store `[r26+0x60]`): magic meter never decreases; yellow Amulet HUD is excessively long. **Same as A+B**.
+- **B only** (hook at `0x00090C74`, cave `0x004C1230`, float store `[r26+0x68]`): no observable effect; original magic consumption and original yellow HUD return.
+- **A+B**: same magic + HUD result as A.
+
+Thus **A alone is sufficient for both desired infinite magic and unwanted HUD change**; **B is unnecessary for the observed behavior**, and removing B is NOT a HUD fix. Do not interpret the yellow gauge discrepancy as a resource charge difference. The next fix must replace or refine A, or adjust a distinct HUD-specific computation, while preserving original bar geometry.
+
+The now-completed disposable test file `God_of_War_II_HD_Magic_AB_test_patch.yml` was deleted from the repository. The existing confirmed full-magic patch is retained for rollback.
+
+A `GOW2.self` binary is present in the repository (Git blob `52c1b648051049511998163ffa34482f9c830817`), but the GitHub text connector cannot decode the binary (UnicodeDecodeError) and direct raw download is not accessible in the current working environment. **No binary disassembly of the uploaded file has yet been completed; no speculative patch bytes have been committed.** Static analysis needs readable bytes or a directly attached file.
+
 ## God of War HD (first game) — gameplay-verified
 
 First-game PPU hash: `PPU-645f0573d7438e37ddd231377adf9c1205e8a040`.
