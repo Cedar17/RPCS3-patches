@@ -1,28 +1,42 @@
 # RPCS3 patches
 
-Small, documented RPCS3 patch collection. Current focus: **God of War HD** from **God of War Collection**, US release **BCUS98229**, game update **01.01**.
+Small, documented patches for **God of War Collection** (US serial **BCUS98229**, update **01.01**). God of War I HD and II HD are separate executables with different PPU hashes even on the same disc.
 
-## Current status
+## God of War II HD — infinite jumps and magic (community patch; gameplay testing pending)
 
-Target PPU hash:
+**Download:** [`God_of_War_II_HD_BCUS98229_01.01_patch.yml`](./God_of_War_II_HD_BCUS98229_01.01_patch.yml) | [Raw file](https://raw.githubusercontent.com/Cedar17/RPCS3-patches/master/God_of_War_II_HD_BCUS98229_01.01_patch.yml)
 
-```text
-PPU-645f0573d7438e37ddd231377adf9c1205e8a040
-```
+- Game: **God of War II HD**, BCUS98229, app version **01.01**.
+- Target executable hash: `PPU-9cd8d28963ebc29b59c79819cb56f3d92e857a37`.
+- **Infinite Mid-Air Jumps:** one PPC NOP at `0x0008CDB4`.
+- **Infinite Magic:** two hooks at `0x00090A38` / `0x00090C74`, with code caves at `0x004C1214` / `0x004C1230`.
+- **Status:** ported from existing community patches; branch destinations and writes statically checked; **not yet personally tested in game by Cedar17**. The blue HUD behavior (full/frozen/depleting) needs live verification.
+- **Scope:** these two cheats only. No GoW II health, rage, orbs, unlock-all changes.
 
-Gameplay-verified patches:
+### Install without replacing existing patches (Windows RPCS3)
 
-- **Infinite Health** — verified in live gameplay.
-- **Unlimited Magic Use** — verified in live gameplay.
-- **Infinite Mid-Air Jumps** — verified in live gameplay.
+1. Download the **Raw file** and save it as `God_of_War_II_HD_BCUS98229_01.01_patch.yml`. Keep the filename ending in `patch.yml`.
+2. In RPCS3, right-click **God of War Collection** → **Manage Game Patches**, or open **Manage → Game Patches**.
+3. **Drag the downloaded YAML onto the Patch Manager window**, then select **Import** in the dialog (not merely Validate). The Import action is not necessarily a visible toolbar button.
+4. Expand **God Of War: II HD (Custom QoL)** → **BCUS98229** → **01.01**. Tick **Infinite Mid-Air Jumps** and **Infinite Magic** and click **Save**.
+5. Fully stop and restart the game. Test jump repeatedly with X in mid-air and spend magic through the expected empty-blue point; watch HUD and test a checkpoint reload.
+6. If the patch does not show, boot GoW II and inspect `RPCS3.log` for `PPU executable hash`. It must match `PPU-9cd8d28963ebc29b59c79819cb56f3d92e857a37`. Do not force another hash into this file.
 
-The patch file is [`imported_patch.yml`](./imported_patch.yml).
+**Important:** Do not replace your RPCS3 `patches/imported_patch.yml` if it has your GoW I patches or other custom patches. The drag-and-drop **Import** procedure adds entries to the managed custom patch file. Do not enable competing patches that write the same GoW II code cave. If the game becomes unstable, turn off both entries and re-enable each separately. Infinite jumping can bypass trigger volumes; keep a normal save. If the executable patch is not picked up after changes, consider clearing the game's PPU cache.
 
-## Installation
+### Sources and provenance
 
-Download `imported_patch.yml` and place/merge it into RPCS3's patch directory. Then open RPCS3's **Manage Game Patches** for God of War Collection and enable the desired entries.
+- [ChiDreams, Artemis-Patch-Collection-RPCS3 — BCUS98229 v1.01](https://github.com/chidreams/Artemis-Patch-Collection-RPCS3/blob/main/God%20Of%20War%20Collection%20%5BBCUS98229%5D%20v1.01): source of the exact 01.01 US two-code-cave magic patch and infinite-jumps NOP.
+- [PaauloSilva Artemis-Patch-Collection-RPCS3_PKG](https://github.com/PaauloSilva/Artemis-Patch-Collection-RPCS3_PKG): mirrors the relevant code identically; a consistency cross-check, **not** independent runtime testing.
+- [Ali-mk original PS3-era demo, July 2021](https://www.youtube.com/watch?v=EN6j6DhRb5U): describes GoW II HD Infinite Magic and Infinite Jumps for BCUS98229.
+- [bucanero ArtemisPS3, GoW II European BCES00791 cheats](https://github.com/bucanero/ArtemisPS3/blob/master/docs/codes/God%20Of%20War%202%20BCES00791%20v01.00%20av01.01.ncl): alternative magic NOP sites `0x0008D000`, `0x0008D030`, `0x0008D038` belong to the **European** build, so they have **not** been reused for BCUS98229.
+- [RPCS3 Game Patches documentation](https://wiki.rpcs3.net/index.php?title=Help:Game_Patches): YAML versioning and import methodology.
 
-When changing executable-code patches, clearing the game's PPU cache before retesting is useful so RPCS3 recompiles the affected code.
+## God of War HD (first game) — gameplay-verified
+
+First-game PPU hash: `PPU-645f0573d7438e37ddd231377adf9c1205e8a040`.
+
+Cedar17 previously verified **Infinite Health**, **Unlimited Magic Use**, and **Infinite Mid-Air Jumps** in GoW I HD gameplay on BCUS98229 01.01. The existing [`imported_patch.yml`](./imported_patch.yml) remains **unchanged**. Prefer drag-and-drop Import of the separate GoW II file above so you keep these entries.
 
 ## Infinite Health
 
