@@ -1,0 +1,67 @@
+Version: 1.2
+
+# GO W II HD 01.01: Infinite Magic / Fate Amulet HUD regression experiments
+# BCUS98229, PPU hash PPU-9cd8d28963ebc29b59c79819cb56f3d92e857a37
+# This is NOT the final patch; each candidate is untested in gameplay.
+#
+# WHY: Full Magic = Hook A + Hook B. User A/B results:
+#  - A only: Infinite Magic works, yellow Amulet full HUD exceeds normal width.
+#  - B only: no observable effect.
+#  - A+B: same as A only.
+#
+# Test 1: replay A logic but PRESERVE nonvolatile FPR f30 and use a real frame.
+# The old A cave clobbered f30 and borrowed stack below r1 without reserving
+# a frame; nonvolatile f30 being clobbered may affect other rendering logic.
+# This 10-instruction cave fits within mapped A+B cave region [0x4C1214,
+# 0x4C123C], using 0x4C1238 for the return branch.
+#
+# Test 2: reclassify the old "Infinite Jumps" NOP at 0x8CDB4 as a possible
+# bounded-resource update suppression. Actual original instruction confirmed
+# in RPCS3 debugger: D0080060 = stfs f0,0x60(r8). It is NOT a jump counter.
+# This alternate mechanism might avoid writing out-of-range HUD-affecting
+# resource values, but whether it locks magic is UNKNOWN.
+#
+# VERY IMPORTANT:
+# - Disable BOTH original "Infinite Magic" and "Infinite Mid-Air Jumps".
+# - Select EXACTLY ONE test entry below.
+# - Save and FULLY RESTART the game between different tests.
+# - Compare full yellow Amulet HUD at the same save and spend blue magic.
+# - Do not enable the previous, deleted A/B tests (if imported locally).
+# - Original proven two-hook Magic patch remains available for rollback.
+#
+# PPC code for Test 1 independently assembled and checked with
+# clang --target=powerpc64-unknown-linux-gnu / llvm-objdump.
+# The branch at 0x4C1238 to 0x90A3C is 0x4BBCF804.
+# No decrypted GOW2 ELF yet: the provided GOW2.self is encrypted NPDRM and
+# cannot currently be decrypted here with standard FREE klicensee.
+
+PPU-9cd8d28963ebc29b59c79819cb56f3d92e857a37:
+  "TEST 1 - Infinite Magic preserve f30":
+    Games:
+      "God Of War: II HD (Magic HUD Fix Tests)":
+        BCUS98229: [ 01.01 ]
+    Author: "Cedar17; based on Markin_Mods / ChiDreams Hook A"
+    Notes: "EXPERIMENTAL. Hook A with a 0x60-byte stack frame, saves/restores nonvolatile f30. Keeps magic value write to +0x60 intact. Uses old B cave area, so disable ORIGINAL Infinite Magic AND old jump cheat."
+    Patch Version: 0.1
+    Patch:
+      - [ be32, 0x00090A38, 0x484307DC ] # branch to cave A at 0x4C1214
+      - [ be32, 0x004C1214, 0xF821FFA1 ] # stdu r1,-0x60(r1), align 16
+      - [ be32, 0x004C1218, 0xDBC10028 ] # stfd f30,0x28(r1)
+      - [ be32, 0x004C121C, 0xA0090000 ] # lhz r0,0(r9) displaced instruction
+      - [ be32, 0x004C1220, 0xF8010030 ] # std r0,0x30(r1)
+      - [ be32, 0x004C1224, 0xCBC10030 ] # lfd f30,0x30(r1)
+      - [ be32, 0x004C1228, 0xFFC0F69C ] # fcfid f30,f30
+      - [ be32, 0x004C122C, 0xD3DA0060 ] # stfs f30,0x60(r26), original magic effect
+      - [ be32, 0x004C1230, 0xCBC10028 ] # lfd f30,0x28(r1), restore
+      - [ be32, 0x004C1234, 0x38210060 ] # addi r1,r1,0x60, restore SP
+      - [ be32, 0x004C1238, 0x4BBCF804 ] # branch back to 0x00090A3C
+
+  "TEST 2 - Magic via bounded-store NOP":
+    Games:
+      "God Of War: II HD (Magic HUD Fix Tests)":
+        BCUS98229: [ 01.01 ]
+    Author: "Cedar17; original opcode from user RPCS3 debugger"
+    Notes: "EXPERIMENTAL. Single NOP at 0x0008CDB4 (original stfs f0,+0x60(r8)); previously mislabeled as Infinite Jumps. Does NOT use magic Hook A or Hook B. Whether infinite blue works is not established. May freeze another gauge/resource; rollback if unexpected."
+    Patch Version: 0.1
+    Patch:
+      - [ be32, 0x0008CDB4, 0x60000000 ] # NOP bounded float store
