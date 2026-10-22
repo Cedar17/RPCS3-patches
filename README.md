@@ -90,6 +90,21 @@ The now-completed disposable test file `God_of_War_II_HD_Magic_AB_test_patch.yml
 
 A `GOW2.self` binary is present in the repository (Git blob `52c1b648051049511998163ffa34482f9c830817`), but the GitHub text connector cannot decode the binary (UnicodeDecodeError) and direct raw download is not accessible in the current working environment. **No binary disassembly of the uploaded file has yet been completed; no speculative patch bytes have been committed.** Static analysis needs readable bytes or a directly attached file.
 
+### Targeted HUD regression tests (2026-10-22; NOT gameplay validated)
+
+Test file: [`God_of_War_II_HD_Magic_HUD_fix_test_patch.yml`](./God_of_War_II_HD_Magic_HUD_fix_test_patch.yml).
+
+The binary uploaded by the user was inspected directly: it is a **2,631,984-byte Sony SCE SELF**, `key_revision=0x0019`, `self_type=NPDRM`, embedded PowerPC64 big-endian ELF at SELF offset `0x90`. The actual executable data are encrypted (and may be compressed). A standard free-klicensee NPDRM decryption attempt failed its metadata padding verification, so **no code-segment reverse-engineering result can be claimed from this encrypted file**; only header inspection succeeded.
+
+Two **mutually exclusive** minimal candidates for user gameplay testing:
+
+1. **TEST 1 – Infinite Magic preserve f30**: Same effect as the working original Hook A, but moves its code cave to a proper stack frame (96 bytes), saves/restores callee-saved `f30`. The original A cave clobbered `f30` without restoring it and used stack storage without creating a frame. These could impact unrelated floating-point UI operations. New PowerPC machine code was assembled with `clang --target=powerpc64-unknown-linux-gnu`, disassembled with `llvm-objdump`, and branch back `0x004C1238 → 0x00090A3C` was verified. The fix is **plausible, not guaranteed**; field `[r26+0x60]` is still set by Hook A.
+2. **TEST 2 – Magic via bounded-store NOP**: Single NOP at `0x0008CDB4`, a float store `stfs f0,0x60(r8)` in an observed clamp/update routine, previously mislabeled **Infinite Jumps**. The old jump test did not show a jump effect. As a different mechanism for suppressing bounded resource decrements, it is worth one isolated check, but **not known** to lock blue magic; it might freeze an unrelated value.
+
+Before each run, disable original **Infinite Magic** and **Infinite Mid-Air Jumps** and make sure only ONE of TEST 1 / TEST 2 is checked. Click Save, stop and relaunch the game, then check **both** (a) repeated spells no longer reduce blue and (b) yellow Amulet gauge at full charge has the correct HUD length compared with unpatched reference. If a candidate glitches or crashes, disable it and reboot. Keep the old full Magic patch as known-working functional fallback.
+
+This test file is separate from the official original patch; none of the original patch machine-code words were changed.
+
 ## God of War HD (first game) — gameplay-verified
 
 First-game PPU hash: `PPU-645f0573d7438e37ddd231377adf9c1205e8a040`.
